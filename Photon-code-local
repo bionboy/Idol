@@ -1,0 +1,99 @@
+const int bpin = 4;  //button pin
+
+const int sp1 = 5;  //switch position 1
+const int sp2 = 6; //switch position 2
+const int sp3 = 0; //switch position 3
+
+int sp1s;
+int sp2s;
+int sp3s;
+
+const int rip = A0;   //red pot input pin
+const int gip = A1;  //green pot input pin
+const int bip = A2;  //blue pot input pin
+
+const int rop = 1;   //red LED output pin
+const int gop = 2;  //green LED output pin
+const int bop = 3;  //blue LED output pin
+
+int rval;   //red pot value
+int gval;  //green pot value
+int bval;  //blue pot value
+
+int bstat; //button status
+
+int loopval = 0; //what loop is selected
+
+void setup () {
+   Serial.begin(9600);
+   pinMode(bpin,INPUT);
+   
+   pinMode(sp1,INPUT);
+   pinMode(sp2,INPUT);
+   pinMode(sp3,INPUT);
+
+   pinMode(rip,INPUT);
+   pinMode(gip,INPUT);
+   pinMode(bip,INPUT);
+
+   pinMode(rop,OUTPUT);
+   pinMode(gop,OUTPUT);
+   pinMode(bop,OUTPUT);
+   Serial.println(" setup ");
+}
+void loop() {
+   rval = analogRead(rip)/16;   // converting the analog value into pwm(0-255)
+   gval = analogRead(gip)/16;
+   bval = analogRead(bip)/16;
+   // Serial.println(" loop ");
+   sp1s = digitalRead(sp1);
+   sp2s = digitalRead(sp2);
+   sp3s = digitalRead(sp3s);
+   if(sp1s == HIGH){             //cloud
+       Serial.println("cloud");
+       delay(1000);
+   }
+   
+   else if(sp2s == HIGH) {       //local
+       Serial.println("local");
+       analogWrite(rop,rval);
+       analogWrite(gop,gval);
+       analogWrite(bop,bval);
+   }
+  
+   else if(sp3s == HIGH) {       //loop
+       Serial.print("loop");
+       bstat = digitalRead(bpin);
+       if(bstat == HIGH) {
+           Serial.print(" dif ");
+           if(loopval == 0){
+               loopval = 1;
+               Serial.print(" loop 2 ");
+           }
+            else if(loopval == 1) {
+               loopval == 2;
+               Serial.print(" loop 3 ");
+           }
+            else if(loopval == 2) {
+               loopval = 0;
+               Serial.print(" loop 1 ");
+           }
+        }
+        else{
+        Serial.print(" same        ");
+        }
+        loops(loopval);                   //loop funtion. takes int of 0-2
+        }
+    else ;
+    }
+
+
+void loops(int x){
+    Serial.println(" loops ");
+    if(x == 0){
+    randomSeed(analogRead(A5));
+    analogWrite(rop,random(255));
+    analogWrite(gop,random(255));
+    analogWrite(bop,random(255));
+    }
+}
