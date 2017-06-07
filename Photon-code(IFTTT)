@@ -1,0 +1,240 @@
+bool nightMode(String arg);
+bool night = false;
+bool lights(String arg);
+bool lightStat = false;
+
+int tinkerDigitalRead(String pin);
+int tinkerDigitalWrite(String command);
+int tinkerAnalogRead(String pin);
+int tinkerAnalogWrite(String command);
+
+const int bpin = 4;  //button pin
+const int sp1 = 5;  //switch position 1
+const int sp2 = 6; //switch position 2
+const int sp3 = 0; //switch position 3
+int bstat = 0; //button status
+int lastbstat = 0; //last button status
+int sp1s = 0;
+int sp2s = 0;
+int sp3s = 0;
+const int rip = A0;   //red pot input pin
+const int gip = A1;  //green pot input pin
+const int bip = A2;  //blue pot input pin
+const int rop = 2;   //red LED output pin  // had to switch
+const int gop = 1;  //green LED output pin // had to switch
+const int bop = 3;  //blue LED output pin
+int rval = 0;   //red pot value
+int gval = 0;  //green pot value
+int bval = 0;  //blue pot value
+int loopval = 0; //what loop is selected
+int rdelay = 100; //delay on red pot for loops
+int x;
+
+void setup() {
+  Particle.function("nightMode", nightMode);
+  Particle.function("toggleLights", lights);
+  Particle.function("digitalread", tinkerDigitalRead);
+  Particle.function("digitalwrite", tinkerDigitalWrite);
+  Particle.function("analogread", tinkerAnalogRead);
+  Particle.function("analogwrite", tinkerAnalogWrite);
+
+  Serial.begin(9600);
+  pinMode(bpin, INPUT);
+  pinMode(sp1, INPUT);
+  pinMode(sp2, INPUT);
+  pinMode(sp3, INPUT);
+  pinMode(rip, INPUT);
+  pinMode(gip, INPUT);
+  pinMode(bip, INPUT);
+  pinMode(rop, OUTPUT);
+  pinMode(gop, OUTPUT);
+  pinMode(bop, OUTPUT);
+  Serial.println(" setup ");
+}
+
+void loop() {
+  rval = analogRead(rip) / 16; // converting the analog value into pwm(0-255)
+  gval = analogRead(gip) / 16;
+  bval = analogRead(bip) / 16;
+  sp1s = digitalRead(sp1);
+  sp2s = digitalRead(sp2);
+  sp3s = digitalRead(sp3);
+    
+   Serial.print("R: ");
+   Serial.print(rval);
+   Serial.print(" G: ");
+   Serial.print(gval);
+   Serial.print(" B: ");
+   Serial.println(bval);
+   
+   if (lightStat) {
+    lightLoop();
+  } else if (night) {
+    nightLoop();
+  } else if (sp1s == HIGH) {           //cloud
+    Serial.println("cloudMode");
+    delay(1000);
+  } else if (sp2s == HIGH) {      //local
+    Serial.println("localMode");
+    analogWrite(rop, rval);
+    analogWrite(gop, gval);
+    analogWrite(bop, bval);
+  } else if (sp3s == HIGH) {      //loop
+    Serial.println("loopMode");
+    loops();
+  } else ;
+}
+
+void loops() {
+  Serial.println(" loops ");
+  buttonRead();
+  switch (x) {
+    case 0:
+      rdelay = analogRead(rip);
+      randomSeed(analogRead(A5));
+      analogWrite(rop, random(255));
+      analogWrite(gop, random(255));
+      analogWrite(bop, random(255));
+      delay(rdelay);
+      break;
+    case 1:
+      analogWrite(rop, 255);
+      break;
+    case 2:
+      analogWrite(bop, 255);
+      break;
+    default:
+      break;
+  }
+}
+
+void buttonRead() {
+  bstat = digitalRead(bpin);
+  if (bstat = ! lastbstat && bstat == HIGH) {
+    //Serial.print(" dif ");
+    switch (x) {
+      case 0:
+        x = 1;
+        //Serial.print(" loop 2 ");
+        break;
+      case 1:
+        x = 2;
+        //Serial.print(" loop 3 ");
+        break;
+      case 2:
+        x = 0;
+        //Serial.print(" loop 1 ");
+        break;
+      default:
+        break;
+    }
+  } else {
+    //Serial.print(" same        ");
+  }
+  lastbstat = bstat;
+}
+
+bool nightMode(String arg) {
+  Serial.println("nightMode");
+  if (night) {
+    night = false;
+  } else {
+    night = true;
+  }
+  delay(100);
+  return night;
+}
+
+void nightLoop() {
+  Serial.println("nightLoop");
+  analogWrite(rop, random(20, 50));
+  analogWrite(gop, random(0, 20));
+  analogWrite(bop, 0);
+  delay(random(1500, 3000));
+}
+
+bool lights(String arg) {
+  Serial.println("toggle lights");
+  if (lightStat) {
+    lightStat = false;
+  } else {
+    lightStat = true;
+  }
+  delay(100);
+  return lightStat;
+}
+
+void lightLoop() {
+  Serial.println("lightLoop");
+  analogWrite(rop, 0);
+  analogWrite(gop, 0);
+  analogWrite(bop, 0);
+  delay(1000);
+}
+/////////////////////////////////////////////////////////////////////////////////////////
+// Tinker
+
+int tinkerDigitalRead(String pin) {
+  int pinNumber = pin.charAt(1) - '0';
+  if (pinNumber < 0 || pinNumber > 7) return -1;
+  if (pin.startsWith("D")) {
+    pinMode(pinNumber, INPUT_PULLDOWN);
+    return digitalRead(pinNumber);
+  }
+  else if (pin.startsWith("A")) {
+    pinMode(pinNumber + 10, INPUT_PULLDOWN);
+    return digitalRead(pinNumber + 10);
+  }
+  return -2;
+}
+
+int tinkerDigitalWrite(String command) {
+  bool value = 0;
+  int pinNumber = command.charAt(1) - '0';
+  if (pinNumber < 0 || pinNumber > 7) return -1;
+  if (command.substring(3, 7) == "HIGH") value = 1;
+  else if (command.substring(3, 6) == "LOW") value = 0;
+  else return -2;
+  if (command.startsWith("D")) {
+    pinMode(pinNumber, OUTPUT);
+    digitalWrite(pinNumber, value);
+    return 1;
+  }
+  else if (command.startsWith("A")) {
+    pinMode(pinNumber + 10, OUTPUT);
+    digitalWrite(pinNumber + 10, value);
+    return 1;
+  }
+  else return -3;
+}
+
+int tinkerAnalogRead(String pin) {
+  int pinNumber = pin.charAt(1) - '0';
+  if (pinNumber < 0 || pinNumber > 7) return -1;
+  if (pin.startsWith("D")) {
+    pinMode(pinNumber, INPUT);
+    return analogRead(pinNumber);
+  }
+  else if (pin.startsWith("A")) {
+    pinMode(pinNumber + 10, INPUT);
+    return analogRead(pinNumber + 10);
+  }
+  return -2;
+}
+
+int tinkerAnalogWrite(String command) {
+  int pinNumber = command.charAt(1) - '0';
+  if (pinNumber < 0 || pinNumber > 7) return -1;
+  String value = command.substring(3);
+  if (command.startsWith("D")) {
+    pinMode(pinNumber, OUTPUT);
+    analogWrite(pinNumber, value.toInt());
+    return 1;
+  }
+  else if (command.startsWith("A")) {
+    pinMode(pinNumber + 10, OUTPUT);
+    analogWrite(pinNumber + 10, value.toInt());
+    return 1;
+  }
+  else return -2;
+}
